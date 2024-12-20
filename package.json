@@ -1,0 +1,27 @@
+{
+  "name": "ridex-server",
+  "version": "1.0.0",
+  "description": "A car booking application",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Aparup123/ridex-sever.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Aparup123/ridex-sever/issues"
+  },
+  "homepage": "https://github.com/Aparup123/ridex-sever#readme",
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
