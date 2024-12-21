@@ -1,9 +1,12 @@
-import mongoose from "mongoose";
-import { Schema } from "mongoose";
+const mongoose=require('mongoose')
 
-const riderSchema = new Schema(
+const riderSchema = new mongoose.Schema(
     {
         name: { 
+            type: String, 
+            trim: true,  
+        },
+        username:{
             type: String, 
             required: true,
             unique: true, 
@@ -22,7 +25,6 @@ const riderSchema = new Schema(
         },
         phone_number: { 
             type: String, 
-            required: true, 
             unique: true,   
             trim: true,
             match: [        // Regex for phone number validation (adjust for your use case)
@@ -36,11 +38,6 @@ const riderSchema = new Schema(
         },
         refreshToken: {
             type: String 
-        },
-        location: {
-            lat: { type: Number, required: true }, 
-            lng: { type: Number, required: true }, 
-            address: { type: String, required: true } 
         },
         profile_image: {
             type: String, 
