@@ -8,7 +8,7 @@ app.use(express.json())
 app.use(cookieParser())
 const homeRouter=require('./routes/homeRouter');
 const riderRouter = require('./routes/riderRouter');
-
+const errorHandler=require('./middlewares/errorHandler')
 
 app.use(homeRouter)
 app.get('/', (req, res)=>{
@@ -18,6 +18,8 @@ app.get('/', (req, res)=>{
 })
 app.use('/rider', riderRouter)
 
+
+app.use(errorHandler)
 
 PORT=process.env.PORT || 3000;
 app.listen(PORT, async () => {

@@ -1,16 +1,35 @@
 const Rider=require('../models/riders.models')
 const bcrypt=require('bcrypt')
+const Joi=require('joi')
+const ApiError=require('../services/ApiError')
 const { generateAccessToken, generateRefreshToken } = require('../services/auth.services')
-const registerRider=async(req, res)=>{
-    const {email, username, password}=req.body
+const registerRider=async(req, res, next)=>{
+    
         try{
+            const {email, username, password}=req.body
+            // Validate req.body
+            const schema=Joi.object({
+                password:Joi.string()
+                        .required()
+                        .min(6),
+                username: Joi.string()
+                            .required()
+                            .min(5)
+                            .max(10),
+                email:Joi.string()
+                        .email()
+                        .required()
+                })
+
+            await schema.validateAsync(req.body)
+
             // check for existing rider with email or username
             const rider=await Rider.findOne({
                 $or:[{email}, {username}]
             })
 
             if(rider){
-                return res.status(401).json("username or email already exists!")
+                throw new ApiError(400, "User already exists!")
             }
 
             // Creating new rider
@@ -22,7 +41,7 @@ const registerRider=async(req, res)=>{
             const savedRider=await newRider.save()
 
             if(!savedRider){
-                return res.status(500).json("Something went wrong registering user")
+                throw new ApiError(500,"Something went wrong registering user")
             }
 
             // Generate refresh and access token
@@ -33,7 +52,7 @@ const registerRider=async(req, res)=>{
             savedRider.refreshToken=generatedRefreshToken
             var updatedRider=await savedRider.save()
             if(!updatedRider){
-                return res.status(500).json("error saving refresh token")
+                throw new ApiError(500,"Error saving refresh token")
             }
 
             updatedRider=updatedRider.toObject()
@@ -45,17 +64,80 @@ const registerRider=async(req, res)=>{
             .cookie("refreshToken",generatedRefreshToken)
             .json({"rider registered":updatedRider})
 
-
-
-
         }catch(err){
-            console.log(err)
-            return res.status(500).json(
-               "error"
-            )
+            next(err);
         }
 }
 
+const riderLogin=async (req, res, next)=>{
+    try{
+        const {email, password}=req.body
+
+        // Validate req.body
+        const schema=Joi.object({
+            email: Joi.string()
+                    .email()
+                    .required(),
+            password: Joi.string()
+                        .required()
+                        .min(6)
+        })
+
+        await schema.validateAsync(req.body)
+
+        // Check rider existence
+        const rider=await Rider.findOne({email})
+        if(!rider){
+            throw new ApiError(401, "User doesn't exist")
+        }
+        // Check password
+        const passwordMatched=await bcrypt.compare(password, rider.password)
+        if(!passwordMatched){
+            throw new ApiError(404, "Incorrect email or password")
+        }
+
+        // Generate Access and Refresh tokens
+        const accessToken=await generateAccessToken(rider._id)
+        const generatedRefreshToken=await generateRefreshToken(rider._id)
+        rider.refreshToken=generatedRefreshToken
+        await rider.save()
+        
+        // Send user info
+        const riderObject={
+            email:rider.email,
+            username:rider.username,
+            profile_image:rider.profile_image
+        }
+        
+        // Login successful send response
+        res
+        .status(200)
+        .cookie("accessToken", accessToken)
+        .cookie("refreshToken", generatedRefreshToken)
+        .json({
+            message:"Successfully logged in",
+            rider:riderObject
+        })
+
+    }catch(err){
+        next(err)
+    }
+}
+
+const riderLogout=(req, res, next)=>{
+    try{
+        res
+        .cookie("accessToken", "")
+        .cookie("refreshToken", "")
+        .json("Successfully logged out.")
+    }catch(err){
+        next(err)
+    }
+}
+
+
 module.exports={
-    registerRider
+    registerRider,
+    riderLogout,
+    riderLogin
 }
