@@ -2,8 +2,11 @@ const Rider=require('../models/riders.models')
 const bcrypt=require('bcrypt')
 const Joi=require('joi')
 const ApiError=require('../services/ApiError')
-const { generateAccessToken, generateRefreshToken } = require('../services/auth.services')
+const { generateAccessToken, generateRefreshToken, sendOtp } = require('../services/auth.services')
 const jwt=require('jsonwebtoken')
+const otpGenerator=require('otp-generator')
+const Otp=require('../models/otps.models')
+
 
 const registerRider=async(req, res, next)=>{
     
@@ -138,6 +141,45 @@ const riderLogout=(req, res, next)=>{
     }
 }
 
+const riderGetOtp=async(req, res, next)=>{
+    try{ 
+        // Get phone number from req.body
+        const {phone_number}=req.body
+        if(!phone_number){
+            throw new ApiError(400, "Otp not found!")
+        }
+        
+        // Generate otp
+        const otp=await otpGenerator.generate(6, { upperCaseAlphabets: false, specialChars: false, lowerCaseAlphabets: false });
+        if(!otp){
+            throw new ApiError(500, "Failed to generate OTP!")
+        }
+
+        // Save otp in DB
+        const otpRecord=new Otp({
+            phone_number,
+            otp
+        })
+
+        await otpRecord.save()
+
+        // Send otp
+        const otpSentResult=await sendOtp(phone_number, otp)
+        console.log(otpSentResult)
+        if(!otpSentResult){
+            throw new ApiError(500, "Failed to generate OTP!")
+        }
+
+        res.
+        json("Otp sent successfully.")
+
+    }catch(err){
+        next(err)
+    }
+
+}
+
+
 const riderRefreshAccessToken= async (req, res, next)=>{
     try{
         const {refreshToken}= req.cookies
@@ -188,5 +230,6 @@ module.exports={
     registerRider,
     riderLogout,
     riderLogin,
-    riderRefreshAccessToken
+    riderRefreshAccessToken,
+    riderGetOtp
 }
