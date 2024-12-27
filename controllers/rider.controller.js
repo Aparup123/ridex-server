@@ -155,13 +155,22 @@ const riderGetOtp=async(req, res, next)=>{
             throw new ApiError(500, "Failed to generate OTP!")
         }
 
-        // Save otp in DB
-        const otpRecord=new Otp({
-            phone_number,
-            otp
-        })
+        // If Otp already exists?
+        const otpExists=await Otp.findOne({phone_number})
+        if(otpExists){
+            otpExists.otp=otp
+            await otpExists.save()
+        }else{
+            // Save otp in DB
+            const otpRecord=new Otp({
+                phone_number,
+                otp
+            })
 
-        await otpRecord.save()
+            await otpRecord.save()
+        }
+
+        
 
         // Send otp
         const otpSentResult=await sendOtp(phone_number, otp)
@@ -179,6 +188,54 @@ const riderGetOtp=async(req, res, next)=>{
 
 }
 
+const riderValidateOtp=async(req, res, next)=>{
+    try{
+        // Get phn no and otp from the req.body
+        const {phone_number, otp}=req.body
+        // Search phone_number in Otp collection
+        const otpRecord=await Otp.findOne({phone_number})
+        if(!otpRecord){
+            throw new ApiError(400, "OTP not sent!")
+        }
+        // Check otp
+        if(otpRecord.otp!=otp){
+            throw new ApiError(401, "OTP invalid!")
+        }
+
+        // Search if the rider with phn no exists || Already registered
+        var rider=await Rider.findOne({phone_number})
+
+        // If rider does not exist register rider
+        if(!rider){
+            riderObject=new Rider({phone_number})
+            rider=await riderObject.save()
+            if(!rider){
+                throw new ApiError(500, "Failed registering rider")
+            }
+        }
+
+        // Generate refresh and access tokens
+        const accessToken=await generateAccessToken(rider._id)
+        const refreshToken=await generateRefreshToken(rider._id)
+
+        // Update rider refresh token
+        rider.refreshToken=refreshToken
+        await rider.save()
+        
+        // Delete OTP
+        await Otp.deleteOne({phone_number}) 
+
+        // Send response
+        res
+        .status(200)
+        .cookie("accessToken", accessToken)
+        .cookie("refreshToken", refreshToken)
+        .json("Successfully signed in.")
+
+    }catch(err){
+        next(err)
+    }
+}
 
 const riderRefreshAccessToken= async (req, res, next)=>{
     try{
@@ -226,10 +283,12 @@ const riderRefreshAccessToken= async (req, res, next)=>{
 
 }
 
+
 module.exports={
     registerRider,
     riderLogout,
     riderLogin,
     riderRefreshAccessToken,
-    riderGetOtp
+    riderGetOtp,
+    riderValidateOtp
 }
