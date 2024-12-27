@@ -1,7 +1,6 @@
-import mongoose from "mongoose";
-import { Schema } from "mongoose"
+const mongoose=require('mongoose')
 
-const driverSchema = new Schema({
+const driverSchema = new mongoose.Schema({
     driverName:{ 
         type: String, 
         required: true 
