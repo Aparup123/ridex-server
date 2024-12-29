@@ -1,5 +1,5 @@
 const jwt=require('jsonwebtoken')
-const fast2sms = require('fast-two-sms')
+
 const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 
