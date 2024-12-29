@@ -8,9 +8,7 @@ const riderSchema = new mongoose.Schema(
             trim: true,  
         },
         username:{
-            type: String, 
-            trim: true,   
-            index: true   
+            type: String,  
         },
         email: { 
             type: String, 
