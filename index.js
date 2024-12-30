@@ -3,10 +3,22 @@ const express= require('express');
 const cookieParser=require('cookie-parser')
 const app = express();
 const mongoose=require('mongoose')
+const cors=require('cors')
 
-app.use(express.json())
-app.use(cookieParser())
+//middlewares
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors({
+    origin:"*",
+    credentials: true
+}));
+app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+
+//Importing Routes
 const homeRouter=require('./routes/homeRouter');
+const driverRouter = require('./routes/driverRouter');
 const riderRouter = require('./routes/riderRouter');
 const errorHandler=require('./middlewares/errorHandler');
 const connectDB = require('./services/connectDB');
@@ -18,7 +30,7 @@ app.get('/', (req, res)=>{
     })
 })
 app.use('/rider', riderRouter)
-
+app.use('/driver', driverRouter)
 
 connectDB()
 
