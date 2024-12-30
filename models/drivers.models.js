@@ -97,4 +97,34 @@ const driverSchema = new Schema({
     }
 }, {timestamps: true});
 
+
+
+//temporary generating tokens
+
+driverSchema.methods.generateAccessToken = function () {
+    const accessToken = jwt.sign(
+        { 
+            id: this._id 
+        }, 
+            process.env.ACCESS_TOKEN_SECRET, 
+        {
+            expiresIn: "1d",
+        }
+    );
+    return accessToken;
+};
+
+driverSchema.methods.generateRefreshToken = function () {
+    const refreshToken = jwt.sign(
+        { 
+            id: this._id 
+        }, 
+            process.env.REFRESH_TOKEN_SECRET, 
+        {
+            expiresIn: "7d",
+        }
+    );
+    return refreshToken;
+};
+
 module.exports = mongoose.model("Driver", driverSchema);

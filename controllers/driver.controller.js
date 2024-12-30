@@ -4,28 +4,13 @@ const jwt = require("jsonwebtoken");
 const ApiError = require("../services/ApiError");
 const ApiResponse = require("../services/ApiResponse");
 const asyncHandler = require("../services/asyncHandler");
-const generateAccessToken = require("../services/auth.services");
-const generateRefreshToken = require("../services/auth.services");
-const sendOtp = require("../services/auth.services");
+const {sendOtp, generateAccessandRefreshToken} = require("../services/auth.services");
+const { options } = require("joi");
+const { UserDefinedMessageInstance } = require("twilio/lib/rest/api/v2010/account/call/userDefinedMessage");
 
 
 //function to generate access and refresh token
-const generateAccessandRefreshToken = async(userId)=>{
-    try {
-        const user =await User.findById(userId)
 
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
-
-        user.refreshToken = refreshToken
-        await user.save({ validateBeforeSave: false})
-
-        return {accessToken, refreshToken}
-
-    } catch (error) {
-        throw new ApiError(500,"Something went wrong while generating tokens")
-    }
-}
 
 const registerDriver = asyncHandler(async (req, res) => {
     const { driverName, driverNumber, password, ride_type, routes, status} = 
@@ -55,7 +40,6 @@ const registerDriver = asyncHandler(async (req, res) => {
     //ROUTE VALIDATION USING GMAP API (NOT IMPLEMENTED)
 
     const hashedPassword=await bcrypt.hash(password, 10)
-
 
     const newDriver = await Driver.create({
         driverName,
@@ -102,6 +86,8 @@ const registerDriver = asyncHandler(async (req, res) => {
         throw new ApiError(500,"Something went wrong registering user")
     }
 
+    const {accessToken, refreshToken} = await generateAccessandRefreshToken(newDriver._id, Driver)
+
     const createdDriver = await Driver.findById(newDriver._id).select(
         "-password -refreshToken"
     )
@@ -109,11 +95,56 @@ const registerDriver = asyncHandler(async (req, res) => {
     if(!createdDriver){
         throw new ApiError(500,"Driver Registering failed")
     }
-    
-    res.status(201).json(
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+    res.status(201)
+    .cookie("accessToken", accessToken , options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
         new ApiResponse(200, createdDriver, "Driver registered")
     )
 
 });
 
-module.exports = { registerDriver };
+const loginDriver = asyncHandler(async (req, res) => {
+    const { driverNumber, password } = req.body;
+
+    if ([driverNumber, password].includes(undefined)) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const driver = await Driver.findOne({ driverNumber });
+
+    if (!driver) {
+        throw new ApiError(404, "Driver not Registered");
+    }
+
+    const isMatch = await bcrypt.compare(password, driver.password);
+
+    if (!isMatch) {
+        throw new ApiError(400, "Invalid credentials");
+    }
+    console.log(driver._id)
+    const { accessToken, refreshToken } = await generateAccessandRefreshToken(driver._id);
+    driver.refreshToken = refreshToken;
+    await driver.save({ validateBeforeSave: false });
+
+    const LoggedinDriver = await Driver.findById(driver._id).select(
+        "-password -refreshToken"
+    );
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    res.status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(200, LoggedinDriver, "Driver logged in")
+    );
+});
+module.exports = { registerDriver, loginDriver };

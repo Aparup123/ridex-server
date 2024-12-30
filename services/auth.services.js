@@ -4,13 +4,35 @@ const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWI
 
 
 const generateAccessToken=async (_id)=>{
+    console.log(_id)
     const accessToken=await jwt.sign({_id}, process.env.ACCESS_TOKEN_SECRET, {expiresIn:process.env.ACCESS_TOKEN_EXPIRY})
     return accessToken
 }
 
 const generateRefreshToken=async(_id)=>{
+    console.log(_id)
     const refreshToken=await jwt.sign({_id}, process.env.REFRESH_TOKEN_SECRET, {expiresIn:process.env.REFRESH_TOKEN_EXPIRY})
     return refreshToken
+}
+const generateAccessandRefreshToken = async(userId,User)=>{
+    try {
+        const user =await User.findById(userId)
+        console.log(user)
+        console.log(userId.toString())
+        const accessToken = await  generateAccessToken(userId.toString())
+        const refreshToken = await generateRefreshToken(userId.toString()) 
+
+        console.log(accessToken,refreshToken)
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false})
+
+        return {accessToken, refreshToken}
+
+    } catch (error) {
+        console.log(error)
+        throw new ApiError(500,"Something went wrong while generating tokens")
+    }
 }
 
 const sendOtp=async (phone_number, otp)=>{
@@ -26,5 +48,6 @@ const sendOtp=async (phone_number, otp)=>{
 module.exports={
     generateAccessToken,
     generateRefreshToken,
+    generateAccessandRefreshToken,
     sendOtp
 }
